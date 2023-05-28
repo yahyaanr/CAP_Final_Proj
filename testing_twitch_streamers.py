@@ -10,6 +10,7 @@ load_dotenv()
 client_id = os.getenv("CLIENT_ID")
 client_secret = os.getenv("CLIENT_SECRET")
 access_token = os.getenv("ACCESS_TOKEN")
+tsv_file_path = str(os.getenv("ENV_PATH"))
 
 def save_streamer_to_csv(streamer, tsv_file_path):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -91,7 +92,4 @@ def get_twitch_streamers(access_token, first, tsv_file_path, save_interval=1000)
     print(f'Average speed: {average_speed:.2f} streamers/second.')      
     print(f'Saved data for {save_count} streamers in total.')
     
-
-tsv_file_path = '/home/mocha/cap/Final_Proj/testing_twitch_stream_1.tsv'
-
 streamers_data = get_twitch_streamers(access_token, first=100, tsv_file_path=tsv_file_path, save_interval=15000)
