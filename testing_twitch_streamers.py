@@ -2,9 +2,8 @@ from dotenv import load_dotenv
 import requests
 import os
 from datetime import datetime
-import pandas as pd
-from tqdm import tqdm
 import csv
+from tqdm import tqdm
 
 load_dotenv()
 client_id = os.getenv("CLIENT_ID")
@@ -30,16 +29,13 @@ def save_streamer_to_csv(streamer, tsv_file_path):
         streamer['thumbnail_url'],
         str(streamer['viewer_count'])  # Convert integer to string
     ]
-    
-    with open(tsv_file_path, 'r', newline='') as file:
-        lines = file.readlines()
-        lines.insert(1, '\t'.join(row) + '\n')
 
-    with open(tsv_file_path, 'w', newline='') as file:
-        file.writelines(lines)
+    with open(tsv_file_path, 'a', newline='') as file:
+        writer = csv.writer(file, delimiter='\t')
+        writer.writerow(row)
 
 
-def get_twitch_streamers(access_token, first, pagination_limit, tsv_file_path):
+def get_twitch_streamers(access_token, first, pagination_limit, tsv_file_path, save_interval=1000):
     headers = {
         'Authorization': f'Bearer {access_token}',
         'Client-Id': client_id
@@ -49,9 +45,9 @@ def get_twitch_streamers(access_token, first, pagination_limit, tsv_file_path):
         'started_at': datetime.today().strftime('%Y-%m-%dT00:00:00Z')  # Starting from 12 AM today
     }
     url = 'https://api.twitch.tv/helix/streams'
-    # pagination_responses = 0
-    total_rows = pagination_limit * 100
-    
+    total_rows = pagination_limit * first
+    save_count = 0
+
     if not os.path.isfile(tsv_file_path):
         with open(tsv_file_path, 'w', newline='') as file:
             header = [
@@ -70,7 +66,7 @@ def get_twitch_streamers(access_token, first, pagination_limit, tsv_file_path):
                 'ThumbnailURL',
                 'ViewerCount'
             ]
-            writer = csv.writer(file, delimiter='\t')  # Use tab delimiter for TSV
+            writer = csv.writer(file, delimiter='\t')
             writer.writerow(header)
 
     with tqdm(total=total_rows, desc="Retrieving Streamers") as pbar:
@@ -81,6 +77,7 @@ def get_twitch_streamers(access_token, first, pagination_limit, tsv_file_path):
             if 'data' in data:
                 for streamer in data['data']:
                     save_streamer_to_csv(streamer, tsv_file_path)
+                    save_count += 1
                     pbar.update(1)
 
             if 'pagination' in data and 'cursor' in data['pagination']:
@@ -88,7 +85,6 @@ def get_twitch_streamers(access_token, first, pagination_limit, tsv_file_path):
             else:
                 break
 
-tsv_file_path = '/home/mocha/cap/Final_Proj/testing_twitch_stream_.csv'
+tsv_file_path = '/home/mocha/cap/Final_Proj/testing_twitch_stream_.tsv'
 
-streamers_data = get_twitch_streamers(access_token, first=100, pagination_limit=20, tsv_file_path=tsv_file_path)
-
+streamers_data = get_twitch_streamers(access_token, first=100, pagination_limit=1000, tsv_file_path=tsv_file_path, save_interval=1000)
