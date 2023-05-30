@@ -3,4 +3,4 @@
 
 Catatan:
 1. .env nya harus di ubah lagi
-2. File berhasil dijalankan, total makan 3 jam
+2. File berhasil dijalankan, run time 3 jam
