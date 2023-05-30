@@ -11,8 +11,8 @@ load_dotenv()
 client_id = os.getenv("CLIENT_ID")
 client_secret = os.getenv("CLIENT_SECRET")
 access_token = os.getenv("ACCESS_TOKEN")
-tsv_file_path = '/home/mocha/cap/Final_Proj/testing_user.tsv'
-tsv_file_path1 = '/home/mocha/cap/Final_Proj/testing_twitch_stream_1.tsv'
+tsv_file_path = '/home/mocha/cap/finalproj/testing_user.tsv'
+tsv_file_path1 = '/home/mocha/cap/finalproj/CAP_Final_Proj/stream.tsb'
 column_indices = [2]
 
 def save_user_to_csv(user_data, tsv_file_path):
@@ -97,11 +97,11 @@ async def get_twitch_users(access_token, stream_ids, tsv_file_path, save_interva
             writer = csv.writer(file, delimiter='\t')
             writer.writerow(header)
 
-    rate_limit = 30
+    rate_limit = 10
     bucket_size = 30
     token_bucket = TokenBucket(rate_limit, bucket_size)
 
-    concurrency_limit = multiprocessing.cpu_count() * 500 # Adjust the concurrency limit based on available CPU resources
+    concurrency_limit = multiprocessing.cpu_count() * 10 # Adjust the concurrency limit based on available CPU resources
     semaphore = asyncio.Semaphore(concurrency_limit)
 
     async def fetch_user_info(session, user_id):
@@ -136,7 +136,7 @@ async def get_twitch_users(access_token, stream_ids, tsv_file_path, save_interva
 
     async with aiohttp.ClientSession() as session:
         pbar = tqdm(total=len(stream_ids), desc="Retrieving Users")
-        chunk_size = 500 * concurrency_limit  # Number of rows to process in each chunk
+        chunk_size = 10 * concurrency_limit
         for i in range(0, len(stream_ids), chunk_size):
             chunk_ids = stream_ids[i:i+chunk_size]
             await process_rows(session, chunk_ids)
