@@ -12,8 +12,9 @@ client_id = os.getenv("CLIENT_ID")
 client_secret = os.getenv("CLIENT_SECRET")
 access_token = os.getenv("ACCESS_TOKEN")
 tsv_file_path = '/home/mocha/cap/Final_Proj/testing_user.tsv'
-tsv_file_path1 = '/home/mocha/cap/Final_Proj/testing_twitch_stream_1.tsv'
-column_indices = [2]
+tsv_file_path1 = '/home/mocha/cap/Final_Proj/testing_twitch_stream_.tsv'
+column_indices_1 = [0]
+column_indices_2 = [2]
 
 def save_user_to_csv(user_data, tsv_file_path):
     with open(tsv_file_path, 'a', newline='') as file:
@@ -32,14 +33,32 @@ def save_user_to_csv(user_data, tsv_file_path):
         ])
 
 def read_columns_from_tsv(tsv_file_path, column_indices):
-    stream_ids = set()  # Use a set to avoid duplicates
+    if not os.path.exists(tsv_file_path):
+        # Create an empty file
+        with open(tsv_file_path, 'w'):
+            pass
+
+    column_values = []
     with open(tsv_file_path, 'r') as file:
         reader = csv.reader(file, delimiter='\t')
-        next(reader)  # Skip header
+        try:
+            header = next(reader)  # Read the header row
+        except StopIteration:
+            header = []  # Empty file, no header present
         for row in reader:
-            stream_id = row[column_indices[0]]  # Assuming stream ID is in the specified column
-            stream_ids.add(stream_id)  # Add stream ID to the set
-    return list(stream_ids)
+            values = [row[index] for index in column_indices]
+            column_values.append(values)
+    return column_values
+
+def compare_unique_ids(tsv_file_path_1, tsv_file_path_2, column_indices_1, column_indices_2):
+    unique_ids_1 = set(tuple(values) for values in read_columns_from_tsv(tsv_file_path_1, column_indices_1))
+    unique_ids_2 = set(tuple(values) for values in read_columns_from_tsv(tsv_file_path_2, column_indices_2))
+    unique_ids_correlated = unique_ids_1.intersection(unique_ids_2)  # Find the IDs that are present in both sets
+    unique_ids_not_correlated = list(unique_ids_2 - unique_ids_correlated)  # Find the IDs in unique_ids_2 that are not in unique_ids_1
+    count_user = len(unique_ids_1)
+    count_before = len(unique_ids_2)
+    count = len(unique_ids_not_correlated)
+    return count_user, count_before, count, unique_ids_not_correlated
 
 class TokenBucket:
     def __init__(self, rate_limit, bucket_size):
@@ -71,6 +90,13 @@ async def get_twitch_user(session, access_token, user_id, headers):
             return None
 
 async def get_twitch_users(access_token, stream_ids, tsv_file_path, save_interval=1000):
+    
+    count_user, count_before, count, unique_ids_not_correlated = compare_unique_ids(tsv_file_path, tsv_file_path1, column_indices_1, column_indices_2)
+    
+    print("Total Unique ID on Stream Table: ", count_before)
+    print("Total Unique ID on User Table: ", count_user)
+    print("Total ID not Correlated into User_db: ", count)
+
     headers = {
         'Authorization': f'Bearer {access_token}',
         'Client-Id': client_id
@@ -97,11 +123,11 @@ async def get_twitch_users(access_token, stream_ids, tsv_file_path, save_interva
             writer = csv.writer(file, delimiter='\t')
             writer.writerow(header)
 
-    rate_limit = 30
+    rate_limit = 10
     bucket_size = 30
     token_bucket = TokenBucket(rate_limit, bucket_size)
 
-    concurrency_limit = multiprocessing.cpu_count() * 500 # Adjust the concurrency limit based on available CPU resources
+    concurrency_limit = multiprocessing.cpu_count() * 10 # Adjust the concurrency limit based on available CPU resources
     semaphore = asyncio.Semaphore(concurrency_limit)
 
     async def fetch_user_info(session, user_id):
@@ -136,7 +162,7 @@ async def get_twitch_users(access_token, stream_ids, tsv_file_path, save_interva
 
     async with aiohttp.ClientSession() as session:
         pbar = tqdm(total=len(stream_ids), desc="Retrieving Users")
-        chunk_size = 500 * concurrency_limit  # Number of rows to process in each chunk
+        chunk_size = 10 * concurrency_limit
         for i in range(0, len(stream_ids), chunk_size):
             chunk_ids = stream_ids[i:i+chunk_size]
             await process_rows(session, chunk_ids)
@@ -162,7 +188,7 @@ async def get_twitch_users(access_token, stream_ids, tsv_file_path, save_interva
 
 
 # Read stream IDs from the TSV file
-stream_ids = read_columns_from_tsv(tsv_file_path1, column_indices)
+stream_ids = [item[0] for item in compare_unique_ids(tsv_file_path, tsv_file_path1, column_indices_1, column_indices_2)[-1]]
 
 save_interval = 1000  # Optional: Specify the save interval
 asyncio.run(get_twitch_users(access_token, stream_ids, tsv_file_path, save_interval))
