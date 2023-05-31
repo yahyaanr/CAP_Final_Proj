@@ -11,10 +11,6 @@ load_dotenv()
 client_id = os.getenv("CLIENT_ID")
 client_secret = os.getenv("CLIENT_SECRET")
 access_token = os.getenv("ACCESS_TOKEN")
-tsv_file_path = '/home/mocha/cap/Final_Proj/testing_user.tsv'
-tsv_file_path1 = '/home/mocha/cap/Final_Proj/testing_twitch_stream_.tsv'
-column_indices_1 = [0]
-column_indices_2 = [2]
 
 def save_user_to_csv(user_data, tsv_file_path):
     with open(tsv_file_path, 'a', newline='') as file:
