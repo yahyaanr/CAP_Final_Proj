@@ -11,9 +11,10 @@ load_dotenv()
 client_id = os.getenv("CLIENT_ID")
 client_secret = os.getenv("CLIENT_SECRET")
 access_token = os.getenv("ACCESS_TOKEN")
-tsv_file_path = '/home/faisyadd/testing_streamer_videos.tsv'
-tsv_file_path1 = '/home/faisyadd/Twitchapi_gabungan/testing_streamer.tsv'
-column_indices = [2]
+tsv_file_path_1 = '/home/faisyadd/testing_streamer_videos.tsv'
+tsv_file_path_2 = '/home/faisyadd/Twitchapi_gabungan/testing_streamers_30Mei_6.tsv'
+column_indices_1 = [2]
+column_indices_2 = [2]
 
 def save_video_to_csv(video_data, tsv_file_path):
     with open(tsv_file_path, 'a', newline='') as file:
@@ -37,15 +38,43 @@ def save_video_to_csv(video_data, tsv_file_path):
             video_data['duration']
         ])
 
+# def read_columns_from_tsv(tsv_file_path, column_indices):
+#     stream_ids = set()  # Use a set to avoid duplicates
+#     with open(tsv_file_path, 'r') as file:
+#         reader = csv.reader(file, delimiter='\t')
+#         next(reader)  # Skip header
+#         for row in reader:
+#             stream_id = row[column_indices[0]]  # Assuming stream ID is in the specified column
+#             stream_ids.add(stream_id)  # Add stream ID to the set
+#     return list(stream_ids)
+
 def read_columns_from_tsv(tsv_file_path, column_indices):
-    stream_ids = set()  # Use a set to avoid duplicates
+    if not os.path.exists(tsv_file_path):
+        # Create an empty file
+        with open(tsv_file_path, 'w'):
+            pass
+
+    column_values = []
     with open(tsv_file_path, 'r') as file:
         reader = csv.reader(file, delimiter='\t')
-        next(reader)  # Skip header
+        try:
+            header = next(reader)  # Read the header row
+        except StopIteration:
+            header = []  # Empty file, no header present
         for row in reader:
-            stream_id = row[column_indices[0]]  # Assuming stream ID is in the specified column
-            stream_ids.add(stream_id)  # Add stream ID to the set
-    return list(stream_ids)
+            values = [row[index] for index in column_indices]
+            column_values.append(values)
+    return column_values
+
+def compare_unique_ids(tsv_file_path_1, tsv_file_path_2, column_indices_1, column_indices_2):
+    unique_ids_1 = set(tuple(values) for values in read_columns_from_tsv(tsv_file_path_1, column_indices_1))
+    unique_ids_2 = set(tuple(values) for values in read_columns_from_tsv(tsv_file_path_2, column_indices_2))
+    unique_ids_correlated = unique_ids_1.intersection(unique_ids_2)  # Find the IDs that are present in both sets
+    unique_ids_not_correlated = list(unique_ids_2 - unique_ids_correlated)  # Find the IDs in unique_ids_2 that are not in unique_ids_1
+    count_user = len(unique_ids_1)
+    count_before = len(unique_ids_2)
+    count = len(unique_ids_not_correlated)
+    return count_user, count_before, count, unique_ids_not_correlated
 
 class TokenBucket:
     def __init__(self, rate_limit, bucket_size):
@@ -77,6 +106,13 @@ async def get_twitch_video(session, access_token, user_id, headers):
             return None
 
 async def get_twitch_videos(access_token, stream_ids, tsv_file_path, save_interval=1000):
+   
+    count_user, count_before, count, unique_ids_not_correlated = compare_unique_ids(tsv_file_path_1, tsv_file_path_2, column_indices_1, column_indices_2)
+       
+    print("Total Unique ID on Stream Table: ", count_before)
+    print("Total Unique ID on User Table: ", count_user)
+    print("Total ID not Correlated into User_db: ", count)
+
     headers = {
         'Authorization': f'Bearer {access_token}',
         'Client-Id': client_id
@@ -174,7 +210,7 @@ async def get_twitch_videos(access_token, stream_ids, tsv_file_path, save_interv
 
 
 # Read stream IDs from the TSV file
-stream_ids = read_columns_from_tsv(tsv_file_path1, column_indices)
+stream_ids = [item[0] for item in compare_unique_ids(tsv_file_path_1, tsv_file_path_2, column_indices_1, column_indices_2)[-1]]
 
 save_interval = 1000  # Optional: Specify the save interval
-asyncio.run(get_twitch_videos(access_token, stream_ids, tsv_file_path, save_interval))
+asyncio.run(get_twitch_videos(access_token, stream_ids, tsv_file_path_1, save_interval))
