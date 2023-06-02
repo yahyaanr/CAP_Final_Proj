@@ -2,20 +2,20 @@ CREATE DATABASE IF NOT EXISTS dim_fact_db;
 
 USE dim_fact_db;
 
---#------------------------------------------------------------------------------------------------------#--
---#------------------------------------------------------------------------------------------------------#--
---#------------------------------------------------------------------------------------------------------#--
---Stream Dimension--
-CREATE TABLE IF NOT EXISTS dim_stream(
-    streamID INT PRIMARY KEY, 
-    streamTitle NVARCHAR, 
-    streamType VARCHAR(10)
+--#--------------------------------------------------------------------------------------------------------#--
+--#--------------------------------------------Stream Dimension--------------------------------------------#--
+--#--------------------------------------------------------------------------------------------------------#--
+
+CREATE EXTERNAL TABLE IF NOT EXISTS dim_stream(
+    streamID INT, 
+    streamTitle STRING, 
+    streamType STRING
 );
 
 USE dim_stream;
 
 SELECT streamID, streamTitle, streamType INTO dim_users FROM <nama_table_stream>;
----------Atau---------
+--------------Atau--------------
 CREATE TABLE dim_stream AS
 SELECT
     streamID,
@@ -24,28 +24,52 @@ SELECT
 FROM
     <nama_table_stream>;
 
---#------------------------------------------------------------------------------------------------------#--    
---#------------------------------------------------------------------------------------------------------#--
---#------------------------------------------------------------------------------------------------------#--
---Video Dimension--
+-------------##--##-----OPSI KEDUA-----##--##-------------
+-------------Dengan asumsi data sudah di hdfs-------------
+from pyspark.sql import SparkSession, HiveContext
+
+spark = SparkSession.builder \
+    .appName("HiveExample") \
+    .config("spark.sql.catalogImplementation", "hive") \
+    .config("hive.metastore.uris", "thrift://localhost:9083") \
+    .enableHiveSupport() \
+    .getOrCreate()
+
+createtable = '''
+    CREATE EXTERNAL TABLE IF NOT EXISTS dim_stream(
+        streamID INT, 
+        streamTitle STRING, 
+        streamType STRING
+    )   
+    ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t'
+    STORED AS TEXTFILE
+    LOCATION '<hdfs>'
+    TBLPROPERTIES ('skip.header.line.count'='1')
+'''
+spark.sql(createtable)
+
+--#-------------------------------------------------------------------------------------------------------#--    
+--#--------------------------------------------VIDEO DIMENSION--------------------------------------------#--
+--#-------------------------------------------------------------------------------------------------------#--
+
 CREATE TABLE IF NOT EXISTS dim_videos(
-    video_id INT PRIMARY KEY, 
-    video_title NVARCHAR, 
-    video_description NVARCHAR, 
+    video_id INT, 
+    video_title STRING, 
+    video_description STRING, 
     video_created_at TIMESTAMP, 
     video_published_at TIMESTAMP, 
     video_url TEXT, 
-    video_viewable VARCHAR(10), 
+    video_viewable STRING, 
     video_view_count INT, 
-    video_language VARCHAR(15), 
-    video_type VARCHAR(15), 
-    video_duration VARCHAR(15)
+    video_language STRING, 
+    video_type STRING, 
+    video_duration STRING
 );
 
 USE dim_videos;
 
 SELECT video_id, video_title, video_description, video_created_at, video_published_at, video_url, video_viewable, video_view_count, video_language, video_type, video_duration
-INTO dim_video FROM <nama_table_video>;
+INTO dim_videos FROM <nama_table_video>;
 ---------Atau---------
 CREATE TABLE dim_videos AS
 SELECT
@@ -62,19 +86,50 @@ SELECT
     video_duration
 FROM
     <nama_table_video>
+---------##--##-----OPSI KEDUA-----##--##---------
+---------Dengan asumsi data sudah di hdfs---------
+from pyspark.sql import SparkSession, HiveContext
 
---#------------------------------------------------------------------------------------------------------#--
---#------------------------------------------------------------------------------------------------------#--
---#------------------------------------------------------------------------------------------------------#--
---Users Dimension--
+spark = SparkSession.builder \
+    .appName("HiveExample") \
+    .config("spark.sql.catalogImplementation", "hive") \
+    .config("hive.metastore.uris", "thrift://localhost:9083") \
+    .enableHiveSupport() \
+    .getOrCreate()
+
+createtable = '''
+    CREATE TABLE IF NOT EXISTS dim_videos(
+        video_id INT, 
+        video_title STRING, 
+        video_description STRING, 
+        video_created_at TIMESTAMP, 
+        video_published_at TIMESTAMP, 
+        video_url TEXT, 
+        video_viewable STRING, 
+        video_view_count INT, 
+        video_language STRING, 
+        video_type STRING, 
+        video_duration STRING
+    )
+    ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t'
+    STORED AS TEXTFILE
+    LOCATION '<hdfs>'
+    TBLPROPERTIES ('skip.header.line.count'='1')
+'''
+spark.sql(createtable)
+
+--#-------------------------------------------------------------------------------------------------------#--
+--#--------------------------------------------Users Dimension--------------------------------------------#--
+--#-------------------------------------------------------------------------------------------------------#--
+
 CREATE TABLE IF NOT EXISTS dim_users (
-    user_id INT PRIMARY KEY,
-    user_login_name VARCHAR(50), 
-    user_display_name NVARCHAR, 
-    user_type VARCHAR(12), 
-    user_broadcaster_type VARCHAR(12), 
-    user_description NVARCHAR, 
-    user_email VARCHAR(50), 
+    user_id INT,
+    user_login_name STRING, 
+    user_display_name STRING, 
+    user_type STRING, 
+    user_broadcaster_type STRING, 
+    user_description STRING, 
+    user_email STRING, 
     user_created_at STRING
 );
 
@@ -96,20 +151,50 @@ SELECT
 FROM
     <nama_table_users>;
 
---#------------------------------------------------------------------------------------------------------#--
---#------------------------------------------------------------------------------------------------------#--
---#------------------------------------------------------------------------------------------------------#--
---stream_language Dimension--
+---------##--##-----OPSI KEDUA-----##--##---------
+---------Dengan asumsi data sudah di hdfs---------
+from pyspark.sql import SparkSession, HiveContext
+
+spark = SparkSession.builder \
+    .appName("HiveExample") \
+    .config("spark.sql.catalogImplementation", "hive") \
+    .config("hive.metastore.uris", "thrift://localhost:9083") \
+    .enableHiveSupport() \
+    .getOrCreate()
+
+createtable = '''
+    CREATE TABLE IF NOT EXISTS dim_users (
+        user_id INT,
+        user_login_name STRING, 
+        user_display_name STRING, 
+        user_type STRING, 
+        user_broadcaster_type STRING, 
+        user_description STRING, 
+        user_email STRING, 
+        user_created_at STRING
+    )
+    ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t'
+    STORED AS TEXTFILE
+    LOCATION '<hdfs>'
+    TBLPROPERTIES ('skip.header.line.count'='1')
+'''
+spark.sql(createtable)
+
+--#-------------------------------------------------------------------------------------------------------#--
+--#---------------------------------------stream_language Dimension---------------------------------------#--
+--#-------------------------------------------------------------------------------------------------------#--
+
 CREATE TABLE IF NOT EXISTS dim_stream_language (
-    SK_language INT AUTO_INCREMENT PRIMARY KEY,
-    stream_language_kode VARCHAR(2),
-    stream_language VARCHAR(20)
+    SK_language INT,
+    stream_language_kode STRING,
+    stream_language STRING
 );
 
 USE dim_stream_language;
 
-INSERT INTO dim_stream_language (stream_language_kode, stream_language)
+INSERT INTO dim_stream_language (SK_language, stream_language_kode, stream_language)
 SELECT
+    ROW_NUMBER() OVER (ORDER BY stream_language_kode) AS SK_language,
     stream_language_kode,
     CASE
         WHEN stream_language_kode = 'aa' THEN 'Afar'
@@ -300,18 +385,51 @@ FROM
     <nama_table_stream>;
 
 --#------------------------------------------------------------------------------------------------------#--
+--#--------------------------------------------Time Dimension--------------------------------------------#--
+--#------------------------------------------------------------------------------------------------------#--
+--File SQL--
+CREATE TABLE time_dimension (
+    surrogate_key STRING,
+    time TIMESTAMP,
+    year INT,
+    month INT,
+    day INT
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY '\t'
+STORED AS TEXTFILE;
+
+--File python--
+from datetime import datetime, timedelta
+
+start_date = datetime(2023, 1, 1)
+end_date = datetime(2023, 12, 31)
+
+data = []
+
+current_date = start_date
+while current_date <= end_date:
+    surrogate_key = current_date.strftime("%Y%m%d")
+    time = current_date.strftime("%Y-%m-%d")
+    year = current_date.year
+    month = current_date.month
+    day = current_date.day
+
+    data.append((surrogate_key, time, year, month, day))
+    current_date += timedelta(days=1)
+
+output_file = "time_dimension.csv"  # Nama file output
+delimiter = ","  
+
+with open(output_file, "w") as f:
+    for row in data:
+        line = delimiter.join(map(str, row)) + "\n"
+        f.write(line)
+
+hive_query = f"LOAD DATA INPATH '{output_file}' INTO TABLE time_dimension"
+
 --#------------------------------------------------------------------------------------------------------#--
 --#------------------------------------------------------------------------------------------------------#--
---Time Dimension--
-CREATE TABLE time_dimension AS
-SELECT
-    CONCAT(
-        DATE_FORMAT(streamer_start_time, '%Y%m%d'),
-        DATE_FORMAT(streamer_start_time, '%H%i') --Tapi bisa juga baris ini dihapus kalau SK nya hanya tanggalnya aja--
-    ) AS surrogate_key,
-    streamer_start_time,
-    EXTRACT(YEAR FROM streamer_start_time) AS year,
-    EXTRACT(MONTH FROM streamer_start_time) AS month,
-    EXTRACT(DAY FROM streamer_start_time) AS day
-FROM
-    <nama_table_stream;
+--#------------------------------------------------------------------------------------------------------#--
+
+
